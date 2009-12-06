@@ -22,6 +22,7 @@ class TestMechanizedSession < Test::Unit::TestCase
   end
 
   def setup
+    @logger = Logger.new(StringIO.new)
     @previous_session_data = <<-YAML
 --- !ruby/object:WWW::Mechanize::CookieJar
 jar:
@@ -57,30 +58,30 @@ jar:
   end
 
   def test_initialize_with_previous_session__sets_cookies
-    session = MechanizedSession.new(:session_data => @previous_session_data)
+    session = MechanizedSession.new(:session_data => @previous_session_data, :logger =>@logger)
     google_cookies = session.agent.cookie_jar.cookies(URI.parse("http://google.com/"))
     assert_equal 2, google_cookies.length
   end
 
   def test_initialize_with_username__calls_login
-    session = ExampleEmptyMechanizedSession.new(:username => "david", :password => "ponies")
+    session = ExampleEmptyMechanizedSession.new(:username => "david", :password => "ponies", :logger => @logger)
     assert session.logged_in
   end
 
   def test_initialize_with_username__calls_login__raises_exception_if_returns_false
     assert_raises(MechanizedSession::InvalidAuthentication) do
-      ExampleEmptyMechanizedSession.new(:username => "bad user", :password => "noponies")
+      ExampleEmptyMechanizedSession.new(:username => "bad user", :password => "noponies", :logger => @logger)
     end
   end
 
   def test_initialize_with_username__calls_login__raises_exception_if_returns_non_true
     assert_raises(RuntimeError) do
-      ExampleEmptyMechanizedSession.new(:username => "bad implementation", :password => "noponies")
+      ExampleEmptyMechanizedSession.new(:username => "bad implementation", :password => "noponies", :logger => @logger)
     end
   end
 
   def test_check_for_invalid_session__raises_error_when_doing_something_that_requires_login
-    session = ExampleEmptyMechanizedSession.new({})
+    session = ExampleEmptyMechanizedSession.new(:logger => @logger)
     assert_raises(MechanizedSession::InvalidSession) {
       session.do_something_requiring_login
     }

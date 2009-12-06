@@ -3,6 +3,7 @@ $:.unshift(File.dirname(__FILE__)) unless $:.include?(File.dirname(__FILE__)) ||
 require "rubygems"
 gem "mechanize"
 require "mechanize"
+require "logger"
 
 class MechanizedSession
   class Error < StandardError
@@ -18,20 +19,23 @@ class MechanizedSession
     attr_accessor :inner
   end
 
-  VERSION = '0.0.1'
+  VERSION = '0.0.2'
   attr_accessor :agent
   attr_accessor :disable_session_check
+  attr_accessor :logger
   attr_reader :logged_in
 
   def self.action(name, &block)
     define_method name do |*args|
       result = nil
+      logger.debug "Executing action :#{name}"
       begin
         self.disable_session_check = true if name == :login
         result = block.call(self, *args)
         check_for_invalid_session! unless name == :login
       rescue StandardError => e
-        if e.is_a?(MechanizedSession::Error)
+        logger.debug "Exception #{e} (#{e.class}) raised in action :#{name}"
+        if e.is_a?(MechanizedSession::Error) || e.is_a?(WWW::Mechanize::ResponseCodeError) && e.response_code.to_s == "401"
           raise e
         else
           ex = MechanizeError.new("Unable to execute action :#{name}, due to '#{e}'")
@@ -48,13 +52,17 @@ class MechanizedSession
 
   def initialize(options)
     create_agent
+    @logger = options[:logger] || Logger.new($stdout)
     if options[:session_data]
+      logger.debug "Initializing session from previous data"
       self.agent.cookie_jar = YAML.load(options[:session_data])
     elsif options[:username]
       result = self.login(options)
       if result == false
+        logger.debug "Login returned false, due to invalid credentials we hope"
         raise InvalidAuthentication
       elsif result == true
+        logger.debug "Login returned true, assuming session established"
         @logged_in = true
       else
         raise "the :login method of #{self.class} must return exactly true or false (depending on the success of the login)"
@@ -63,10 +71,20 @@ class MechanizedSession
   end
 
   def get(uri, &block)
+    logger.debug "GET #{uri}"
     page = agent.get(uri)
+    logger.debug "Successfully got page #{page.uri}"
     check_for_invalid_session! unless disable_session_check?
     yield page if block_given?
     page
+  end
+
+  def login(username, password)
+    raise "#{self.class} must declare action :login describing how to log in a session"
+  end
+
+  def session_data
+    agent.cookie_jar.to_yaml
   end
 
   private
@@ -75,11 +93,10 @@ class MechanizedSession
   end
 
   def check_for_invalid_session!
-    raise InvalidSession if agent.current_page && self.class.requires_login?(agent.current_page)
-  end
-
-  def login(username, password)
-    raise "#{self.class} must declare action :login describing how to log in a session"
+    if agent.current_page && self.class.requires_login?(agent.current_page)
+      logger.info "MechanizedSession is no longer valid"
+      raise InvalidSession
+    end
   end
 
   def self.requires_login?(page)
