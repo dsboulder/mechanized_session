@@ -8,6 +8,8 @@ A gem which uses the `mechanize` gem to make it easier to execute remote request
 It allows the programmer to provide a `:login` action callback which is executed whenever mechanized_session determines that the
 session has gone bad or authentication is required.  The programmer also provides other actions which perform useful tasks.
 
+To use this with rails, check out `acts_as_other_website`.
+
 == SYNOPSIS:
 
 class SomeSiteSession < MechanizedSession
@@ -24,11 +26,24 @@ class SomeSiteSession < MechanizedSession
 
   action :get_widgets do |session|
     links = []
-    session.get('http://www.google.com/ig") do |page|
+    session.get('http://www.google.com/ig") do |page|  # might throw InvalidSession if not logged in
       links += page.links
     end
     links
   end
+
+  def self.requires_login?(page)  # explaining to mechanized_session when a page was a redirect to the login page 
+    page.uri.path.downcase.include?("/login")
+  end
+end
+
+@session = SomeSiteSession.new
+begin
+  @session.get_widgets
+rescue InvalidSession => e
+  # deal with invalid session, ask the user for credentials
+  @session = SomeSiteSession.new(:username => "bob", :password => "password")
+  retry
 end
 
 == REQUIREMENTS:
