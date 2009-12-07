@@ -54,6 +54,8 @@ end
 
 * sudo gem install mechanized_session
 
+See blog post at: http://flouri.sh/2009/12/7/introducing-mechanized_session-and-acts_as_other_website
+
 == LICENSE:
 
 (The MIT License)
