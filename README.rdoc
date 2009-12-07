@@ -1,32 +1,49 @@
 = mechanized_session
 
-* http://github.com/#{github_username}/#{project_name}
+* http://github.com/dsboulder/mechanized_session
 
 == DESCRIPTION:
 
-FIX (describe your package)
-
-== FEATURES/PROBLEMS:
-
-* FIX (list of features or problems)
+A gem which uses the `mechanize` gem to make it easier to execute remote requests that require an authenticated session.
+It allows the programmer to provide a `:login` action callback which is executed whenever mechanized_session determines that the
+session has gone bad or authentication is required.  The programmer also provides other actions which perform useful tasks.
 
 == SYNOPSIS:
 
-  FIX (code sample of usage)
+class SomeSiteSession < MechanizedSession
+  action :login do |session, options|
+    session.get('http://www.google.com/login') do |page|
+      next_page = page.form_with(:action =>"/login") do |form|
+        form["email"] = options[:username]
+        form["password"] = options[:password]
+      end.click_button
+      return false if next_page.uri.path.include?("/login")
+    end
+    true
+  end
+
+  action :get_widgets do |session|
+    links = []
+    session.get('http://www.google.com/ig") do |page|
+      links += page.links
+    end
+    links
+  end
+end
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+* mechanize gem
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
+* sudo gem install mechanized_session
 
 == LICENSE:
 
 (The MIT License)
 
-Copyright (c) 2009 FIXME full name
+Copyright (c) 2009 David Stevenson
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
