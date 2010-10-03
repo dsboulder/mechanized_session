@@ -14,7 +14,7 @@ $hoe = Hoe.spec 'mechanized_session' do
   self.developer 'David Stevenson', 'stellar256@hotmail.com'
 #  self.post_install_message = 'PostInstall.txt' # TODO remove if post-install message not required
 #  self.rubyforge_name       = self.name # TODO this is default value
-   self.extra_deps         = [['mechanize','>= 0.9.3']]
+   self.extra_deps         = [['mechanize','>= 1.0.0']]
 
 end
 

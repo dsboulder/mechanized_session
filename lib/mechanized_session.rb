@@ -19,7 +19,7 @@ class MechanizedSession
     attr_accessor :inner
   end
 
-  VERSION = '0.0.2'
+  VERSION = '0.1.0'
   attr_accessor :agent
   attr_accessor :disable_session_check
   attr_accessor :logger
@@ -79,12 +79,43 @@ class MechanizedSession
     page
   end
 
+  def post(uri, params = {}, &block)
+    logger.debug "POST #{uri} #{params.inspect}"
+    page = agent.post(uri, params)
+    logger.debug "Successfully got page #{page.uri}"
+    check_for_invalid_session! unless disable_session_check?
+    yield page if block_given?
+    page
+  end
+
+  def put(uri, entity, &block)
+    logger.debug "PUT #{uri} #{entity.inspect}"
+    page = agent.put(uri, entity)
+    logger.debug "Successfully got page #{page.uri}"
+    check_for_invalid_session! unless disable_session_check?
+    yield page if block_given?
+    page
+  end
+
+  def delete(uri, params = {}, &block)
+    logger.debug "DELETE #{uri} #{params.inspect}"
+    page = agent.delete(uri, params)
+    logger.debug "Successfully got page #{page.uri}"
+    check_for_invalid_session! unless disable_session_check?
+    yield page if block_given?
+    page
+  end
+
   def login(username, password)
     raise "#{self.class} must declare action :login describing how to log in a session"
   end
 
   def session_data
     agent.cookie_jar.to_yaml
+  end
+
+  def basic_auth
+    nil
   end
 
   private
@@ -104,6 +135,10 @@ class MechanizedSession
   end
 
   def create_agent
-    self.agent = WWW::Mechanize.new
+    self.agent = Mechanize.new
+    self.agent.log = logger
+    if auth = basic_auth
+      self.agent.auth(*auth)
+    end
   end
 end
